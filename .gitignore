@@ -7,10 +7,15 @@ typechain-types/
 coverage/
 coverage.json
 .env
+.env.*
+!.env.example
 
 # Frontend
 frontend/dist/
 frontend/node_modules/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
 
 # OS
 .DS_Store

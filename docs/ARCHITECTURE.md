@@ -3,8 +3,12 @@
 
 ---
 
-## 3.1 Core Principle
+## 3.1 Core Principle & Security Principle
 
+### Security Principle
+The smart contract is the only authority. The backend and Firebase never hold private keys or sign transactions. A fully compromised website or backend must not be able to move, change or recover a domain.
+
+### Core Principle
 The `DomainGuard` smart contract is the **sole authority** over domain state. There is no admin setter, no owner override, and no backdoor of any kind. Domain state transitions happen **exclusively inside `execute()`**, and only after the policy for that operation type has been fully satisfied on-chain. The contract cannot be paused, upgraded, or short-circuited by any single participant—including the deployer. Once deployed, authority belongs to the policy rules, not to any individual or organisation.
 
 ---
