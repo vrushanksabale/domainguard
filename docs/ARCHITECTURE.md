@@ -285,13 +285,90 @@ The following are **explicitly out of scope** and will not be implemented:
 | `propose()` caller | Admin only | Admin **or** Guardian | Spec §2 of stage prompt explicitly adds guardians as proposers; useful for emergency UNFREEZE proposals by a guardian without needing an admin. |
 | `Status` enum | Proposed/Approved/Queued/Executed/Rejected/Cancelled/Expired | Pending/Approved/Executed/Rejected/Vetoed/Expired | "Queued" state is a sub-state of Approved (tracked by `eta`); combining them reduces complexity. "Cancelled" renamed Vetoed for clarity. |
 | `EMERGENCY_FREEZE` Op type | Separate Op in the enum | `freezeDomain()` standalone function; NOT in Op enum | The freeze bypasses the request lifecycle entirely (instant, no quorum). Including it in the Op enum would create special-case logic throughout. The function is guardian-only and instant. |
-| `_wasOldKey()` helper | N/A | Stub returning false | During an active KEY_REPLACEMENT request, the oldKey is still a guardian (not yet removed), so `isGuardian[oldKey]` is always true at vote time. The stub is a correct no-op in this context; dead code noted in coverage report. |
+| `_wasOldKey()` helper | N/A | Removed in Stage 3 | Originally proposed as a stub returning false; removed as dead code in Stage 3 cleanup since `isGuardian[oldKey]` is the exact authority check needed during vote counting. |
 | `domainNonce` for KEY_REPLACEMENT | Not specified | Fixed at 0 (global op) | KEY_REPLACEMENT has no domain-specific nonce to bind to. Staleness is irrelevant for global guardian set operations. |
 | Eligible-guardian calculation | "5 minus proposer (if guardian) minus oldKey" | Implemented in `_eligibleGuardians()` | Correctly reduces the guardian count for rejection threshold math. |
 | Self-rejection | Not specified | Mirrors self-approval ban | Prevents a proposer from immediately rejecting their own proposal (consistency). |
 
-### What Was NOT Implemented in Stage 2 (Future Stages)
-- Deployment scripts (`scripts/`) — Stage 3
-- Frontend integration — Stage 4
-- `evm_increaseTime` demo scripts — Stage 3
+---
+
+## 4. Stage 3 Deployment Layout & Demo Architecture
+
+### 4.1 Deployment Topology
+
+The local environment operates on an in-memory/persistent Hardhat node listening on `http://127.0.0.1:8545` with fixed Chain ID `31337`.
+
+```
+                  ┌───────────────────────────────────────────────┐
+                  │          Hardhat Node (Chain ID 31337)        │
+                  │             http://127.0.0.1:8545             │
+                  └───────────────────────┬───────────────────────┘
+                                          │
+            ┌─────────────────────────────┼─────────────────────────────┐
+            ▼                             ▼                             ▼
+   deployments/localhost.json    scripts/deploy.ts              DomainGuard.sol
+   ├── address                   ├── deploys DomainGuard        ├── 1 Admin (Alex)
+   ├── deployer                  ├── registers 3 demo domains   ├── 5 Guardians (Priya, Rahul,
+   ├── delays                    └── exports ABI/artifacts      │   Maya, Marcus, Elena)
+   ├── namedAccounts                                            ├── Delays: 60s/120s/120s/180s
+   └── demo domains                                             └── 3 Demo Domains registered
+            │
+            ▼
+   frontend/src/contracts/
+   ├── DomainGuard.json (ABI)
+   └── localhost.json (Deployment export)
+```
+
+### 4.2 Named Hardhat Signers & Roles
+
+| Name | Role | Hardhat Signer | Address |
+|------|------|----------------|---------|
+| **Alex** | Admin & Deployer | Account #0 | `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266` |
+| **Priya** | Guardian 1 | Account #1 | `0x70997970C51812dc3A010C7d01b50e0d17dc79C8` |
+| **Rahul** | Guardian 2 (lost key in demo C) | Account #2 | `0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC` |
+| **Maya** | Guardian 3 | Account #3 | `0x90F79bf6EB2c4f870365E785982E1f101E93b906` |
+| **Marcus** | Guardian 4 | Account #4 | `0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65` |
+| **Elena** | Guardian 5 | Account #5 | `0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc` |
+| **Sarah** | Domain Owner (Registrant) | Account #6 | `0x976EA74026E726554dB657fA54763abd0C3a0aa9` |
+| **Victor** | Replacement Guardian Key | Account #7 | `0x14dC79964da2C08b23698B3D3cc7Ca32193d9955` |
+| **Alice** | Legitimate New Domain Owner | Account #8 | `0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f` |
+
+### 4.3 Demo Domain Records
+
+Three demo domains are seeded upon deployment via `registerDomain()`:
+1. `mybank.example`: `keccak256("mybank.example")`
+   - Owner: Sarah (`0x976EA74026E726554dB657fA54763abd0C3a0aa9`)
+   - DNS Record Hash: `keccak256("v=spf1 include:mybank.example ~all")`
+2. `harborline.example`: `keccak256("harborline.example")`
+   - Owner: Sarah (`0x976EA74026E726554dB657fA54763abd0C3a0aa9`)
+   - DNS Record Hash: `keccak256("v=spf1 include:harborline.example ~all")`
+3. `ledgerworks.example`: `keccak256("ledgerworks.example")`
+   - Owner: Sarah (`0x976EA74026E726554dB657fA54763abd0C3a0aa9`)
+   - DNS Record Hash: `keccak256("v=spf1 include:ledgerworks.example ~all")`
+
+### 4.4 Demo Script Workflows
+
+1. **`demo:attack` (`scripts/demo-attack.ts`)**
+   - Hour-4 scenario: Alex (admin) proposes `TRANSFER_OWNERSHIP` of `mybank.example` to Alex.
+   - Alex attempts self-approval: reverted with `SelfApprovalForbidden()`.
+   - Alex attempts immediate execution: reverted with `QuorumNotReached()`.
+   - 1 guardian (Elena) colludes and approves: execute still reverts with `QuorumNotReached()`.
+   - On-chain inspection: `mybank.example` owner is unchanged.
+
+2. **`demo:collusion` (`scripts/demo-collusion.ts`)**
+   - Owner + 3 guardians approve a malicious transfer on `harborline.example`. Quorum reached, timelock queued.
+   - Guardian Rahul detects the rogue transfer and invokes `veto()`.
+   - Time is advanced past `transferDelay` via `evm_increaseTime` / `evm_mine`.
+   - Attacker attempts execution: reverted with `QuorumNotReached()` (status is `Vetoed`).
+   - A subsequent legitimate transfer to Alice is proposed, approved by Owner + 3 guardians, time-advanced, and successfully executed on-chain.
+
+3. **`demo:keyloss` (`scripts/demo-keyloss.ts`)**
+   - Guardian Rahul's key is lost.
+   - Priya proposes `KEY_REPLACEMENT` of Rahul with Victor.
+   - Rahul tries to vote on own replacement: reverted with `NotAuthorized()`.
+   - 3 active guardians (Maya, Marcus, Elena) approve; quorum reached.
+   - Time is advanced past `keyDelay` via `evm_increaseTime` / `evm_mine`.
+   - Key replacement is executed: `GuardianReplaced` emitted.
+   - Old key (Rahul) attempts to approve a new DNS request on `ledgerworks.example`: reverted with `NotAuthorized()`.
+   - New key (Victor) approves: success. On-chain guardian list updated.
 

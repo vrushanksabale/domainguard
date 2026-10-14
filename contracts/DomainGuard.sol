@@ -115,7 +115,7 @@ contract DomainGuard {
     // =========================================================================
     //  State
     // =========================================================================
-
+    /// @notice Admin addresses set in the constructor; there is no admin setter, so the admin set is fixed post-deployment.
     mapping(address => bool) public isAdmin;
     mapping(address => bool) public isGuardian;
     address[] private _guardianList;
@@ -415,27 +415,12 @@ contract DomainGuard {
         }
         // For KEY_REPLACEMENT the oldKey cannot vote on its own replacement
         if (req.op == Op.KEY_REPLACEMENT && req.oldKey != req.proposer) {
-            // Only subtract if oldKey is still a guardian (may have been replaced already,
-            // but at proposal time it was validated; we check isGuardian for current state)
-            if (isGuardian[req.oldKey] || _wasOldKey(req.oldKey)) {
+            // Only subtract if oldKey is still a guardian
+            if (isGuardian[req.oldKey]) {
                 eligible -= 1;
             }
         }
         return eligible;
-    }
-
-    /**
-     * @dev Checks if an address was the oldKey in a request that already executed.
-     *      Since we only need this for counting purposes during voting (before execution),
-     *      we track it simply: if the key was the oldKey and is no longer a guardian,
-     *      we still count it as excluded from eligibility.
-     *      For simplicity and gas-safety: during an active KEY_REPLACEMENT request,
-     *      the oldKey is still a guardian (not yet removed), so `isGuardian[oldKey]` is true.
-     *      This function is only consulted for the post-execution case in _eligibleGuardians,
-     *      which cannot occur mid-vote. Therefore we return false here.
-     */
-    function _wasOldKey(address) internal pure returns (bool) {
-        return false;
     }
 
     // =========================================================================

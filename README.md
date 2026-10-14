@@ -42,20 +42,54 @@ npm --prefix frontend install
 | Command | What it does |
 |---------|-------------|
 | `npm run compile` | Compile Solidity contracts with Hardhat |
-| `npm test` | Run Hardhat test suite |
+| `npm test` | Run Hardhat test suite (all 69 tests pass) |
 | `npm run node` | Start local Hardhat node on `127.0.0.1:8545` (chain ID 31337) |
+| `npm run deploy:local` | Deploy DomainGuard contract & register 3 demo domains on localhost |
+| `npm run demo:attack` | Run Hour-4 Rogue Admin Attack demo script |
+| `npm run demo:collusion` | Run Collusion + Guardian Veto & Legitimate Transfer demo script |
+| `npm run demo:keyloss` | Run Judging-time Guardian Key Loss Recovery demo script |
+| `npm run demo:all` | Run all 3 demo scenarios in succession |
 | `npm run frontend` | Start Vite dev server for the React frontend |
 | `npm run frontend:build` | Build the frontend for production |
 
 ---
 
-## Verify the Scaffold
+## Local Node & Demo Execution (Windows PowerShell)
 
-```bash
-npx hardhat compile       # "Compiled 0 Solidity files" — OK at Stage 1
-npx hardhat test          # No tests — exit 0
-npm run frontend:build    # Vite build succeeds
-npm run node              # Hardhat node starts on 127.0.0.1:8545 with 20 accounts
+Open PowerShell in the project directory `C:\Projects\chaintrust`:
+
+### 1. Start the Local Hardhat Node (Terminal 1)
+```powershell
+npm run node
+```
+This runs `hardhat node` and binds to `http://127.0.0.1:8545` on Chain ID `31337`, providing 20 pre-funded test accounts. Keep this terminal running.
+
+### 2. Deploy Contracts & Register Demo Domains (Terminal 2)
+```powershell
+npm run deploy:local
+```
+This deploys `DomainGuard` with named accounts (Alex = Admin, 5 Guardians including Priya and Rahul, Sarah = Domain Owner) and registers:
+- `mybank.example`
+- `harborline.example`
+- `ledgerworks.example`
+
+It writes `deployments/localhost.json` and copies the contract ABI to `frontend/src/contracts/DomainGuard.json`.
+
+### 3. Run Demo Scripts
+Each demo script runs independently against the local node:
+
+```powershell
+# Scenario A: Rogue Admin Attack (Hour-4 event)
+npm run demo:attack
+
+# Scenario B: Collusion & Guardian Veto + Legitimate Transfer
+npm run demo:collusion
+
+# Scenario C: Guardian Key Loss Recovery (Judging event)
+npm run demo:keyloss
+
+# Run all 3 demos in succession:
+npm run demo:all
 ```
 
 ---
@@ -64,13 +98,23 @@ npm run node              # Hardhat node starts on 127.0.0.1:8545 with 20 accoun
 
 ```
 chaintrust/
-├── contracts/            # Solidity smart contracts (populated Stage 2)
-├── test/                 # Hardhat tests (populated Stage 3)
-├── scripts/              # Deploy & interaction scripts (populated Stage 4)
-├── frontend/             # Vite + React + TypeScript + ethers@6 (populated Stage 5)
+├── contracts/
+│   └── DomainGuard.sol   # Core multi-party authorization contract (paris EVM, Solidity ^0.8.24)
+├── test/
+│   └── DomainGuard.test.ts # Hardhat unit tests (69 tests, 100% passing)
+├── scripts/
+│   ├── deploy.ts         # Local deployment and demo domain registration
+│   ├── demo-attack.ts    # Hour-4 Rogue Admin attack scenario
+│   ├── demo-collusion.ts # Collusion & Guardian Veto scenario
+│   ├── demo-keyloss.ts   # Guardian Key Loss recovery scenario
+│   └── helpers.ts        # Shared demo script utilities & log formatting
+├── deployments/
+│   └── localhost.json    # Local network deployment address, ABI references & named accounts
+├── frontend/             # Vite + React + TypeScript frontend
+│   └── src/contracts/    # DomainGuard ABI and localhost deployment exports
 ├── docs/
-│   ├── ARCHITECTURE.md   # Full system design (Stage 1)
-│   └── DEFENSE.md        # 5-minute architecture defence (Stage 1)
+│   ├── ARCHITECTURE.md   # Full system design & Stage 3 deployment layout
+│   └── DEFENSE.md        # 5-minute architecture defence
 ├── hardhat.config.ts
 ├── tsconfig.json
 ├── package.json
@@ -83,12 +127,9 @@ chaintrust/
 
 - [x] **Stage 1** — Project inspection, scaffold, and design lock (ARCHITECTURE.md + DEFENSE.md)
 - [x] **Stage 2** — Core DomainGuard Solidity contract + full test suite (69 tests, 95.57% line coverage)
-- [ ] **Stage 3** — Full Hardhat test suite (all 4 demo scenarios, reverts, edge cases)
-- [ ] **Stage 4** — Deploy & demo scripts
-- [ ] **Stage 5** — React frontend: proposal board and approval panel
-- [ ] **Stage 6** — End-to-end demo run (all 4 scenarios, captured output)
-- [ ] **Stage 7** — Polish: error messages, frontend UX, README demo walkthrough
-- [ ] **Stage 8** — Final review and presentation prep
+- [x] **Stage 3** — Local deployment & demo scripts (deploy.ts, demo-attack, demo-collusion, demo-keyloss, deployments/localhost.json)
+- [ ] **Stage 4** — Frontend integration: React board, approval panel, no hardcoded addresses
+- [ ] **Stage 5** — End-to-end demo run & presentation polish
 
 ---
 

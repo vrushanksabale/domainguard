@@ -4,9 +4,14 @@
   "description": "ChainTrust – DomainGuard multi-party authorization system (BlockHack PS-08)",
   "private": true,
   "scripts": {
+    "node": "hardhat node",
     "compile": "hardhat compile",
     "test": "hardhat test",
-    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
+    "demo:attack": "hardhat run scripts/demo-attack.ts --network localhost",
+    "demo:collusion": "hardhat run scripts/demo-collusion.ts --network localhost",
+    "demo:keyloss": "hardhat run scripts/demo-keyloss.ts --network localhost",
+    "demo:all": "npm run demo:attack && npm run demo:collusion && npm run demo:keyloss",
     "frontend": "npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend run build"
   },

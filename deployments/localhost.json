@@ -1,0 +1,86 @@
+{
+  "chainId": 31337,
+  "address": "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "deploymentBlock": 48,
+  "transactionHash": "0xbd9b06f2ed879f7e28f3aaa5ec5061efc4a0ce63fab94b7f89ef4c16f27c6887",
+  "delays": {
+    "dnsDelay": 60,
+    "transferDelay": 120,
+    "keyDelay": 120,
+    "recoveryDelay": 180
+  },
+  "namedAccounts": {
+    "alex": {
+      "name": "Alex",
+      "role": "Admin",
+      "address": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+    },
+    "priya": {
+      "name": "Priya",
+      "role": "Guardian 1",
+      "address": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+    },
+    "rahul": {
+      "name": "Rahul",
+      "role": "Guardian 2",
+      "address": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+    },
+    "maya": {
+      "name": "Maya",
+      "role": "Guardian 3",
+      "address": "0x90F79bf6EB2c4f870365E785982E1f101E93b906"
+    },
+    "marcus": {
+      "name": "Marcus",
+      "role": "Guardian 4",
+      "address": "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"
+    },
+    "elena": {
+      "name": "Elena",
+      "role": "Guardian 5",
+      "address": "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"
+    },
+    "owner": {
+      "name": "Sarah",
+      "role": "Domain Owner",
+      "address": "0x976EA74026E726554dB657fA54763abd0C3a0aa9"
+    },
+    "victor": {
+      "name": "Victor",
+      "role": "New Guardian Key",
+      "address": "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955"
+    },
+    "newOwner": {
+      "name": "Alice",
+      "role": "Legit New Domain Owner",
+      "address": "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f"
+    }
+  },
+  "domains": {
+    "mybank.example": {
+      "name": "mybank.example",
+      "domainId": "0x843ce7e8b1f2ad97c7ae2ae04c25fcf8ce5fdd0d6d547db5582fddc4125656da",
+      "owner": "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
+      "dnsRecordHash": "0x762653f5335eacd450c4e231ebf808217d7eda5e1efdd7547bd393954ec567ff",
+      "txHash": "0x4ccaddb69957537d500905cbd88353bf3ab069967dd653b9f1fe501b8902c25a",
+      "blockNumber": 49
+    },
+    "harborline.example": {
+      "name": "harborline.example",
+      "domainId": "0xa5652cd282b2f492172040474748cbd01526dde81afe5cf568e13fe73a51a7dc",
+      "owner": "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
+      "dnsRecordHash": "0x91111b21d731eb78dd9f478d2090a4462c00723bba5b0f9251391829a24901f3",
+      "txHash": "0x8b9a7518e972df60291a6c7ea46f21fcd807d088d35cee1a5fbac77bd758bf72",
+      "blockNumber": 50
+    },
+    "ledgerworks.example": {
+      "name": "ledgerworks.example",
+      "domainId": "0x37de18f8ad9620688f1cde7eb44c56a4cd9342b48ff6bfd81935eb1ca5b8423a",
+      "owner": "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
+      "dnsRecordHash": "0x4cd4dfcb02de14bab77824c82f52d8a12ba9bd71bd93624b2cd2e152b8527361",
+      "txHash": "0x115b8eb40184d5c4ceeea03dcdee533a73869a6bea5f8bad9a7e622d2796a500",
+      "blockNumber": 51
+    }
+  }
+}
