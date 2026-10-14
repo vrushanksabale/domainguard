@@ -6,16 +6,29 @@ cache/
 typechain-types/
 coverage/
 coverage.json
+
+# Environment files
 .env
 .env.*
 !.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# Vercel
+.vercel/
+
+# Credentials & Service Account Keys
+*serviceAccount*.json
+*service-account*.json
+*firebase-adminsdk*.json
+*credentials*.json
+*.pem
+*.key
 
 # Frontend
 frontend/dist/
 frontend/node_modules/
-frontend/.env
-frontend/.env.*
-!frontend/.env.example
 
 # OS
 .DS_Store
