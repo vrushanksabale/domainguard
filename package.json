@@ -1,0 +1,18 @@
+{
+  "name": "chaintrust",
+  "version": "0.1.0",
+  "description": "ChainTrust – DomainGuard multi-party authorization system (BlockHack PS-08)",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "node": "hardhat node",
+    "frontend": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.17",
+    "typescript": "^5.7.3"
+  }
+}
