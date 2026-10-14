@@ -273,3 +273,25 @@ The following are **explicitly out of scope** and will not be implemented:
 - Multi-chain / cross-chain features
 - Real guardian identity verification (PKI, DIDs)
 - Production key management (HSMs, MPC wallets)
+
+---
+
+## Implementation Notes (Stage 2)
+
+### Deviations from Stage 1 Design
+
+| Item | Stage 1 Design | Stage 2 Implementation | Reason |
+|------|---------------|----------------------|--------|
+| `propose()` caller | Admin only | Admin **or** Guardian | Spec §2 of stage prompt explicitly adds guardians as proposers; useful for emergency UNFREEZE proposals by a guardian without needing an admin. |
+| `Status` enum | Proposed/Approved/Queued/Executed/Rejected/Cancelled/Expired | Pending/Approved/Executed/Rejected/Vetoed/Expired | "Queued" state is a sub-state of Approved (tracked by `eta`); combining them reduces complexity. "Cancelled" renamed Vetoed for clarity. |
+| `EMERGENCY_FREEZE` Op type | Separate Op in the enum | `freezeDomain()` standalone function; NOT in Op enum | The freeze bypasses the request lifecycle entirely (instant, no quorum). Including it in the Op enum would create special-case logic throughout. The function is guardian-only and instant. |
+| `_wasOldKey()` helper | N/A | Stub returning false | During an active KEY_REPLACEMENT request, the oldKey is still a guardian (not yet removed), so `isGuardian[oldKey]` is always true at vote time. The stub is a correct no-op in this context; dead code noted in coverage report. |
+| `domainNonce` for KEY_REPLACEMENT | Not specified | Fixed at 0 (global op) | KEY_REPLACEMENT has no domain-specific nonce to bind to. Staleness is irrelevant for global guardian set operations. |
+| Eligible-guardian calculation | "5 minus proposer (if guardian) minus oldKey" | Implemented in `_eligibleGuardians()` | Correctly reduces the guardian count for rejection threshold math. |
+| Self-rejection | Not specified | Mirrors self-approval ban | Prevents a proposer from immediately rejecting their own proposal (consistency). |
+
+### What Was NOT Implemented in Stage 2 (Future Stages)
+- Deployment scripts (`scripts/`) — Stage 3
+- Frontend integration — Stage 4
+- `evm_increaseTime` demo scripts — Stage 3
+

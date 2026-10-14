@@ -82,7 +82,7 @@ chaintrust/
 ## Stage Checklist
 
 - [x] **Stage 1** — Project inspection, scaffold, and design lock (ARCHITECTURE.md + DEFENSE.md)
-- [ ] **Stage 2** — Core DomainGuard Solidity contract (structs, storage, events, modifiers)
+- [x] **Stage 2** — Core DomainGuard Solidity contract + full test suite (69 tests, 95.57% line coverage)
 - [ ] **Stage 3** — Full Hardhat test suite (all 4 demo scenarios, reverts, edge cases)
 - [ ] **Stage 4** — Deploy & demo scripts
 - [ ] **Stage 5** — React frontend: proposal board and approval panel
