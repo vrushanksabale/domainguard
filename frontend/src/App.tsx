@@ -9,17 +9,15 @@ import { Home } from './pages/Home';
 import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { ForgotPassword } from './pages/ForgotPassword';
-import {
-  DomainsPlaceholder,
-  NewRequestPlaceholder,
-  ApprovalsPlaceholder,
-  AttackLabPlaceholder,
-  RecoveryPlaceholder,
-  GuardiansPlaceholder,
-  ActivityPlaceholder,
-  SecurityPlaceholder,
-  NotFound,
-} from './pages/Placeholders';
+import { Domains } from './pages/Domains';
+import { NewRequest } from './pages/NewRequest';
+import { Approvals } from './pages/Approvals';
+import { AttackLab } from './pages/AttackLab';
+import { Recovery } from './pages/Recovery';
+import { Guardians } from './pages/Guardians';
+import { Activity } from './pages/Activity';
+import { Security } from './pages/Security';
+import { NotFound } from './pages/Placeholders';
 
 function App() {
   return (
@@ -36,14 +34,14 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
-                <Route path="/domains" element={<DomainsPlaceholder />} />
-                <Route path="/new-request" element={<NewRequestPlaceholder />} />
-                <Route path="/approvals" element={<ApprovalsPlaceholder />} />
-                <Route path="/attack-lab" element={<AttackLabPlaceholder />} />
-                <Route path="/recovery" element={<RecoveryPlaceholder />} />
-                <Route path="/guardians" element={<GuardiansPlaceholder />} />
-                <Route path="/activity" element={<ActivityPlaceholder />} />
-                <Route path="/security" element={<SecurityPlaceholder />} />
+                <Route path="/domains" element={<Domains />} />
+                <Route path="/new-request" element={<NewRequest />} />
+                <Route path="/approvals" element={<Approvals />} />
+                <Route path="/attack-lab" element={<AttackLab />} />
+                <Route path="/recovery" element={<Recovery />} />
+                <Route path="/guardians" element={<Guardians />} />
+                <Route path="/activity" element={<Activity />} />
+                <Route path="/security" element={<Security />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
