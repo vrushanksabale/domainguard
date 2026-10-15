@@ -42,6 +42,7 @@ export interface RequestRecord {
   ownerApproved: boolean;
   guardianApprovals: number;
   guardianRejections: number;
+  rejectionsNeeded?: number;
   hasVoted?: boolean;
   ownerRequired?: boolean;
   guardianThreshold?: number;
@@ -66,6 +67,29 @@ export function parseContractError(err: any): string {
 
   // If already a processed string
   if (typeof err === 'string') return err;
+
+  // Handle user wallet rejection / cancellation
+  if (
+    err.code === 'ACTION_REJECTED' ||
+    err.code === 4001 ||
+    err.info?.error?.code === 4001 ||
+    err.message?.includes('user rejected') ||
+    err.message?.includes('User rejected') ||
+    err.message?.includes('User denied')
+  ) {
+    return 'Transaction was cancelled in wallet by user.';
+  }
+
+  // Handle RPC / network connectivity errors
+  if (
+    err.code === 'NETWORK_ERROR' ||
+    err.message?.includes('could not detect network') ||
+    err.message?.includes('Failed to fetch') ||
+    err.message?.includes('ERR_CONNECTION_REFUSED')
+  ) {
+    return `Network Connection Error: Could not communicate with Ethereum RPC (${CHAIN_CONFIG.rpcUrl}). Verify local node is running (npm run node) or check network configuration.`;
+  }
+
   if (err.message && (err.message.includes('SelfApprovalForbidden') || err.message.includes('Action blocked:') || err.message.includes('Access denied:'))) {
     if (!err.data && !err.revert) return err.message;
   }
@@ -121,7 +145,7 @@ export function parseContractError(err: any): string {
 
   switch (errorName) {
     case 'SelfApprovalForbidden':
-      return 'SelfApprovalForbidden: The request proposer is strictly forbidden by smart contract rules from approving their own request.';
+      return 'SelfApprovalForbidden: The request proposer is strictly forbidden by smart contract rules from approving or rejecting their own request.';
     case 'QuorumNotReached':
       return 'QuorumNotReached: The required approvals or countersignatures have not been reached, or the request was vetoed.';
     case 'TimelockActive':
@@ -145,7 +169,7 @@ export function parseContractError(err: any): string {
     case 'DomainNotFound':
       return 'DomainNotFound: No record matching this domain hash exists on the contract.';
     case 'AlreadyVoted':
-      return 'AlreadyVoted: Connected address has already cast a vote on this request.';
+      return 'AlreadyVoted: Connected address has already cast a vote (approval or rejection) on this request.';
     case 'InvalidRequest':
       return 'InvalidRequest: Proposal parameters failed contract policy validation.';
     case 'InvalidStatus':
@@ -265,6 +289,17 @@ export async function fetchAllRequests(contract: Contract, userAddress?: string 
         } catch {}
       }
 
+      let eligibleGuardians = 5;
+      try {
+        const isPropGuardian = await contract.isGuardian(req.proposer);
+        if (isPropGuardian) eligibleGuardians -= 1;
+        if (opNum === 2 && req.oldKey && req.oldKey !== ethers.ZeroAddress && req.oldKey.toLowerCase() !== req.proposer.toLowerCase()) {
+          const isOldGuardian = await contract.isGuardian(req.oldKey);
+          if (isOldGuardian) eligibleGuardians -= 1;
+        }
+      } catch {}
+      const rejectionsNeeded = Math.max(1, eligibleGuardians - guardianThreshold + 1);
+
       requests.push({
         id: i,
         domainId: req.domainId,
@@ -283,6 +318,7 @@ export async function fetchAllRequests(contract: Contract, userAddress?: string 
         ownerApproved: Boolean(req.ownerApproved),
         guardianApprovals: Number(req.guardianApprovals),
         guardianRejections: Number(req.guardianRejections),
+        rejectionsNeeded,
         hasVoted,
         ownerRequired,
         guardianThreshold,

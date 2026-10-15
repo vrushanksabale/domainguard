@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useWeb3 } from '../context/Web3Context';
 
 export const Login: React.FC = () => {
-  const { signIn, signInWithGoogle, error, clearError } = useAuth();
+  const { signIn, signInWithGoogle, demoLogin, error, clearError } = useAuth();
   const { showToast } = useWeb3();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -13,6 +13,12 @@ export const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || '/';
+
+  const handleDemoLogin = () => {
+    demoLogin();
+    showToast('Signed in as Demo Registrar Admin', 'success');
+    navigate(from, { replace: true });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +63,21 @@ export const Login: React.FC = () => {
             <button onClick={clearError} className="text-rose-500 hover:text-rose-700">✕</button>
           </div>
         )}
+
+        {/* Demo login shortcut for judges & test environments */}
+        <div className="mt-5 p-3 rounded-lg bg-teal-50 border border-teal-200 flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-teal-900">Judging / Demo Mode:</span>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-200 text-teal-800 font-bold">Offline Ready</span>
+          </div>
+          <button
+            type="button"
+            onClick={handleDemoLogin}
+            className="w-full py-1.5 px-3 rounded bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold transition cursor-pointer shadow-sm"
+          >
+            ⚡ Continue as Demo Admin (One-Click)
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>

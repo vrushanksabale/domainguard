@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { RoleSwitcher } from './RoleSwitcher';
 
 export const Navbar: React.FC = () => {
-  const { account, connectMetaMask, isConnecting, isLocalDev } = useWeb3();
+  const { account, connectMetaMask, isConnecting } = useWeb3();
   const { user, logOut } = useAuth();
 
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -97,22 +97,20 @@ export const Navbar: React.FC = () => {
             <RoleSwitcher />
 
             {/* MetaMask / Wallet Status */}
-            {!isLocalDev && (
-              account ? (
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono bg-slate-900 border border-slate-700 text-slate-200">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
-                  <span>{account.slice(0, 6)}...{account.slice(-4)}</span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={connectMetaMask}
-                  disabled={isConnecting}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#0EA5A4] hover:bg-[#0c8a89] text-white transition cursor-pointer"
-                >
-                  {isConnecting ? 'Connecting...' : 'Connect Wallet'}
-                </button>
-              )
+            {account ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono bg-slate-900 border border-slate-700 text-slate-200">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span title={account}>{account.slice(0, 6)}...{account.slice(-4)}</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={connectMetaMask}
+                disabled={isConnecting}
+                className="px-3 py-1.5 rounded-md text-xs font-semibold bg-[#0EA5A4] hover:bg-[#0c8a89] text-white transition cursor-pointer"
+              >
+                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+              </button>
             )}
 
             {/* Firebase Auth State */}

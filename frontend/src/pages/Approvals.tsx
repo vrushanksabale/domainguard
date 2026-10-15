@@ -21,6 +21,7 @@ export const Approvals: React.FC = () => {
     setReceiptSummary,
     refreshStats,
     isLocalDev,
+    guardians,
   } = useWeb3();
   const [requests, setRequests] = useState<RequestRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -80,7 +81,7 @@ export const Approvals: React.FC = () => {
       await writeContract.reject.staticCall(id);
 
       const tx = await writeContract.reject(id);
-      showToast(`Rejection broadcast for Request #${id}...`, 'info');
+      showToast(`Rejection vote broadcast for Request #${id}...`, 'info');
       const receipt = await tx.wait();
       const events = parseReceiptEvents(receipt);
       setReceiptSummary({
@@ -88,7 +89,7 @@ export const Approvals: React.FC = () => {
         blockNumber: receipt?.blockNumber || 0,
         events,
       });
-      showToast(`Request #${id} rejected on-chain!`, 'info');
+      showToast(`Request #${id} rejection vote recorded on-chain!`, 'info');
       await loadRequests();
       await refreshStats();
     } catch (err: any) {
@@ -262,7 +263,7 @@ export const Approvals: React.FC = () => {
               </div>
             )}
 
-            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 text-xs">
               <div>
                 <span className="text-slate-400 font-semibold block uppercase text-[10px]">Proposer</span>
                 <span className="font-mono text-slate-900 break-all">{req.proposer}</span>
@@ -281,8 +282,14 @@ export const Approvals: React.FC = () => {
               )}
               <div>
                 <span className="text-slate-400 font-semibold block uppercase text-[10px]">Guardian Approvals</span>
-                <span className="font-mono font-bold text-slate-900 text-sm">
+                <span className="font-mono font-bold text-emerald-800 text-sm">
                   {req.guardianApprovals} / {req.guardianThreshold ?? 3} required
+                </span>
+              </div>
+              <div>
+                <span className="text-slate-400 font-semibold block uppercase text-[10px]">Guardian Rejections</span>
+                <span className="font-mono font-bold text-rose-800 text-sm">
+                  {req.guardianRejections} / {req.rejectionsNeeded ?? 3} to cancel
                 </span>
               </div>
               <div>
@@ -305,17 +312,20 @@ export const Approvals: React.FC = () => {
 
             {/* Role eligibility context */}
             {(() => {
-              const guardianAddresses = [
-                CHAIN_CONFIG.namedAccounts.priya?.address?.toLowerCase(),
-                CHAIN_CONFIG.namedAccounts.rahul?.address?.toLowerCase(),
-                CHAIN_CONFIG.namedAccounts.maya?.address?.toLowerCase(),
-                CHAIN_CONFIG.namedAccounts.marcus?.address?.toLowerCase(),
-                CHAIN_CONFIG.namedAccounts.elena?.address?.toLowerCase(),
-              ].filter(Boolean);
+              const onChainGuardians = (guardians && guardians.length > 0)
+                ? guardians.map((g) => g.toLowerCase())
+                : [
+                    CHAIN_CONFIG.namedAccounts.priya?.address?.toLowerCase(),
+                    CHAIN_CONFIG.namedAccounts.rahul?.address?.toLowerCase(),
+                    CHAIN_CONFIG.namedAccounts.maya?.address?.toLowerCase(),
+                    CHAIN_CONFIG.namedAccounts.marcus?.address?.toLowerCase(),
+                    CHAIN_CONFIG.namedAccounts.elena?.address?.toLowerCase(),
+                  ].filter(Boolean);
 
-              const isProposer = account?.toLowerCase() === req.proposer.toLowerCase();
-              const isOwner = Boolean(req.domainOwner && account?.toLowerCase() === req.domainOwner.toLowerCase());
-              const isGuardian = account ? guardianAddresses.includes(account.toLowerCase()) : false;
+              const isProposer = account ? account.toLowerCase() === req.proposer.toLowerCase() : false;
+              const isOwner = Boolean(req.domainOwner && account && account.toLowerCase() === req.domainOwner.toLowerCase());
+              const isGuardian = account ? onChainGuardians.includes(account.toLowerCase()) : false;
+              const canVote = !isProposer && (isGuardian || (isOwner && req.ownerRequired));
 
               let approveLabel = 'Approve Request';
               if (isOwner && req.ownerRequired && !req.ownerApproved) {
@@ -329,7 +339,7 @@ export const Approvals: React.FC = () => {
                   {req.status === 1 && isProposer && (
                     <div className="mt-3 p-2.5 bg-amber-50 border border-amber-200 rounded text-amber-800 text-[11px] flex items-center justify-between">
                       <span>
-                        ⚠️ <strong>Proposer Self-Approval Blocked:</strong> Connected as {activeRole} (Proposer). Contract security invariant strictly forbids self-approval.
+                        ⚠️ <strong>Proposer Self-Approval Blocked:</strong> Connected as {activeRole} (Proposer). Contract security invariant strictly forbids self-approval and self-rejection.
                       </span>
                     </div>
                   )}
@@ -348,7 +358,7 @@ export const Approvals: React.FC = () => {
                       {req.ownerRequired && !req.ownerApproved && (
                         <button
                           type="button"
-                          onClick={() => selectNamedAccount('sarah')}
+                          onClick={() => selectNamedAccount('owner')}
                           className="px-2 py-0.5 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-medium cursor-pointer"
                           title="Switch to Domain Owner Sarah"
                         >
@@ -371,6 +381,14 @@ export const Approvals: React.FC = () => {
                       >
                         Switch to Guardian (Rahul)
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => selectNamedAccount('maya')}
+                        className="px-2 py-0.5 rounded bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 font-medium cursor-pointer"
+                        title="Switch to Guardian Maya"
+                      >
+                        Switch to Guardian (Maya)
+                      </button>
                     </div>
                   )}
 
@@ -379,12 +397,12 @@ export const Approvals: React.FC = () => {
                     <div className="text-xs text-slate-500">
                       {req.hasVoted && (
                         <span className="text-purple-700 font-semibold">
-                          Your active wallet ({activeRole}) has already voted on this request.
+                          Your active wallet ({activeRole}) has already cast a vote on this request.
                         </span>
                       )}
                       {!req.hasVoted && req.status === 1 && (
                         <span>
-                          {isGuardian && 'Guardian approval ready to submit.'}
+                          {isGuardian && 'Guardian vote ready to submit.'}
                           {isOwner && req.ownerRequired && !req.ownerApproved && 'Domain owner countersignature ready to submit.'}
                           {!isGuardian && !isOwner && !isProposer && 'Active account is not an authorized voter on this request.'}
                           {isProposer && 'Proposer cannot vote on own request.'}
@@ -404,17 +422,39 @@ export const Approvals: React.FC = () => {
                             <>
                               <button
                                 type="button"
-                                disabled={actionPendingId === req.id}
+                                disabled={actionPendingId === req.id || !canVote}
                                 onClick={() => handleApprove(req.id)}
-                                className="px-3.5 py-1.5 rounded-md text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition cursor-pointer disabled:opacity-50"
+                                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer disabled:opacity-50 ${
+                                  !canVote
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                }`}
+                                title={
+                                  isProposer
+                                    ? 'Proposers cannot approve their own requests on-chain'
+                                    : !canVote
+                                    ? 'Active wallet is not an authorized voter on this request'
+                                    : 'Cast on-chain approval vote'
+                                }
                               >
                                 {actionPendingId === req.id ? 'Processing...' : approveLabel}
                               </button>
                               <button
                                 type="button"
-                                disabled={actionPendingId === req.id}
+                                disabled={actionPendingId === req.id || !canVote}
                                 onClick={() => handleReject(req.id)}
-                                className="px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 transition cursor-pointer disabled:opacity-50"
+                                className={`px-3.5 py-1.5 rounded-md text-xs font-semibold transition cursor-pointer disabled:opacity-50 ${
+                                  !canVote
+                                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+                                    : 'bg-rose-100 hover:bg-rose-200 text-rose-800 border border-rose-300'
+                                }`}
+                                title={
+                                  isProposer
+                                    ? 'Proposers cannot reject their own requests on-chain'
+                                    : !canVote
+                                    ? 'Active wallet is not an authorized voter on this request'
+                                    : 'Cast on-chain rejection vote'
+                                }
                               >
                                 {actionPendingId === req.id ? 'Processing...' : 'Reject'}
                               </button>

@@ -27,8 +27,9 @@ interface Web3ContextType {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
   connectMetaMask: () => Promise<void>;
   switchNetwork: () => Promise<void>;
-  selectNamedAccount: (key: string) => Promise<void>;
+  selectNamedAccount: (keyOrName: string) => Promise<void>;
   namedAccounts: Record<string, NamedAccount>;
+  guardians: string[];
   getWriteContract: () => Promise<Contract>;
   readContract: Contract | null;
   refreshStats: () => Promise<void>;
@@ -40,6 +41,8 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   const [chainId, setChainId] = useState<number | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<string>('Visitor');
+  const [walletSource, setWalletSource] = useState<'namedAccount' | 'injected'>('namedAccount');
+  const [guardians, setGuardians] = useState<string[]>([]);
   const [rpcUnreachable, setRpcUnreachable] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [readContract, setReadContract] = useState<Contract | null>(null);
@@ -78,12 +81,21 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       );
       setReadContract(contract);
 
-      // Default to Alex (Admin) if local dev
+      // Fetch on-chain guardians list
+      try {
+        const glist = await contract.getGuardians();
+        if (glist && glist.length > 0) {
+          setGuardians([...glist]);
+        }
+      } catch {}
+
+      // Default to Alex (Admin) if local dev and no account selected
       if (currentChainId === 31337 && !account) {
         const alex = CHAIN_CONFIG.namedAccounts.alex;
         if (alex) {
           setAccount(alex.address);
           setActiveRole('Admin (Alex)');
+          setWalletSource('namedAccount');
         }
       }
 
@@ -92,6 +104,29 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       setStats((prev) => ({ ...prev, latestBlock: blockNum }));
     } catch {
       setRpcUnreachable(true);
+      // Fallback: If MetaMask browser provider is available, use it for reading!
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        try {
+          const browserProvider = new BrowserProvider((window as any).ethereum);
+          const network = await browserProvider.getNetwork();
+          const currentChainId = Number(network.chainId);
+          setChainId(currentChainId);
+          const contract = new Contract(
+            CHAIN_CONFIG.contractAddress,
+            CHAIN_CONFIG.abi,
+            browserProvider
+          );
+          setReadContract(contract);
+          try {
+            const glist = await contract.getGuardians();
+            if (glist && glist.length > 0) {
+              setGuardians([...glist]);
+            }
+          } catch {}
+          const blockNum = await browserProvider.getBlockNumber();
+          setStats((prev) => ({ ...prev, latestBlock: blockNum }));
+        } catch {}
+      }
     }
   }, [account]);
 
@@ -99,13 +134,10 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
     initProvider();
   }, [initProvider]);
 
-  // Refresh live stats
+  // Refresh live stats and guardians
   const refreshStats = useCallback(async () => {
     if (!readContract) return;
     try {
-      const rpcProvider = new JsonRpcProvider(CHAIN_CONFIG.rpcUrl);
-      const blockNum = await rpcProvider.getBlockNumber();
-
       // Query request count
       const reqCount = await readContract.requestCount();
       let pending = 0;
@@ -118,6 +150,22 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch {}
       }
 
+      // Refresh on-chain guardians
+      try {
+        const glist = await readContract.getGuardians();
+        if (glist && glist.length > 0) {
+          setGuardians([...glist]);
+        }
+      } catch {}
+
+      let blockNum = stats.latestBlock;
+      try {
+        const runner = readContract.runner;
+        if (runner && 'getBlockNumber' in runner) {
+          blockNum = await (runner as any).getBlockNumber();
+        }
+      } catch {}
+
       setStats((prev) => ({
         ...prev,
         latestBlock: blockNum,
@@ -125,7 +173,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         protectedCount: Object.keys(CHAIN_CONFIG.domains).length,
       }));
     } catch {}
-  }, [readContract]);
+  }, [readContract, stats.latestBlock]);
 
   useEffect(() => {
     if (readContract) {
@@ -136,11 +184,32 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [readContract, refreshStats]);
 
   // Select a local dev named account (unlocked JSON-RPC signer)
-  const selectNamedAccount = async (key: string) => {
+  const selectNamedAccount = async (keyOrName: string) => {
     if (!isLocalDev) return;
-    const target = CHAIN_CONFIG.namedAccounts[key];
-    if (!target) return;
+    const query = keyOrName.trim().toLowerCase();
+    // 1. Direct key match
+    let target: NamedAccount | undefined = CHAIN_CONFIG.namedAccounts[keyOrName] || CHAIN_CONFIG.namedAccounts[query];
+    // 2. Search by name, role, or address
+    if (!target) {
+      target = Object.values(CHAIN_CONFIG.namedAccounts).find(
+        (item) =>
+          item.name.toLowerCase() === query ||
+          item.role.toLowerCase() === query ||
+          item.role.toLowerCase().includes(query) ||
+          item.address.toLowerCase() === query
+      );
+    }
+    // 3. Fallback: if 'sarah', map to 'owner'
+    if (!target && query === 'sarah') {
+      target = CHAIN_CONFIG.namedAccounts['owner'];
+    }
 
+    if (!target) {
+      console.warn(`selectNamedAccount: named account "${keyOrName}" not found`);
+      return;
+    }
+
+    setWalletSource('namedAccount');
     setAccount(target.address);
     setActiveRole(`${target.role} (${target.name})`);
     showToast(`Switched active wallet to ${target.name} (${target.role})`, 'info');
@@ -163,6 +232,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       const signer = await browserProvider.getSigner();
       const address = await signer.getAddress();
       setAccount(address);
+      setWalletSource('injected');
 
       // Check role
       let role = 'External User';
@@ -173,6 +243,14 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       setActiveRole(role);
+
+      // Update read contract to browser provider as well
+      const contract = new Contract(
+        CHAIN_CONFIG.contractAddress,
+        CHAIN_CONFIG.abi,
+        browserProvider
+      );
+      setReadContract(contract);
 
       if (currentChainId !== targetChainId) {
         showToast(`Connected to chain ${currentChainId}. Expected ${targetChainId}. Please switch network.`, 'error');
@@ -224,20 +302,39 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
       throw new Error('No active wallet account selected. Please select a role or connect wallet.');
     }
 
-    if (isLocalDev) {
-      // Use node's unlocked account via jsonRpcProvider
-      const rpcProvider = new JsonRpcProvider(CHAIN_CONFIG.rpcUrl);
-      const signer = await rpcProvider.getSigner(account);
+    // 1. If wallet was connected via MetaMask / injected provider, always prioritize browser signer
+    if (walletSource === 'injected' && typeof window !== 'undefined' && (window as any).ethereum) {
+      const browserProvider = new BrowserProvider((window as any).ethereum);
+      const signer = await browserProvider.getSigner();
       return new Contract(CHAIN_CONFIG.contractAddress, CHAIN_CONFIG.abi, signer);
     }
 
+    // 2. If using local dev named account, use the unlocked local Hardhat node signer
+    if (isLocalDev && walletSource === 'namedAccount') {
+      try {
+        const rpcProvider = new JsonRpcProvider(CHAIN_CONFIG.rpcUrl);
+        const signer = await rpcProvider.getSigner(account);
+        return new Contract(CHAIN_CONFIG.contractAddress, CHAIN_CONFIG.abi, signer);
+      } catch (err) {
+        console.warn('Could not get local node signer, trying browser fallback:', err);
+      }
+    }
+
+    // 3. Fallback to browser provider
     if (typeof window !== 'undefined' && (window as any).ethereum) {
       const browserProvider = new BrowserProvider((window as any).ethereum);
       const signer = await browserProvider.getSigner();
       return new Contract(CHAIN_CONFIG.contractAddress, CHAIN_CONFIG.abi, signer);
     }
 
-    throw new Error('No compatible Web3 provider found.');
+    // 4. Fallback to node signer
+    if (isLocalDev) {
+      const rpcProvider = new JsonRpcProvider(CHAIN_CONFIG.rpcUrl);
+      const signer = await rpcProvider.getSigner(account);
+      return new Contract(CHAIN_CONFIG.contractAddress, CHAIN_CONFIG.abi, signer);
+    }
+
+    throw new Error('No compatible Web3 signer found. Please connect MetaMask or select a local dev role.');
   };
 
   return (
@@ -261,6 +358,7 @@ export const Web3Provider: React.FC<{ children: React.ReactNode }> = ({ children
         switchNetwork,
         selectNamedAccount,
         namedAccounts: CHAIN_CONFIG.namedAccounts,
+        guardians,
         getWriteContract,
         readContract,
         refreshStats,
